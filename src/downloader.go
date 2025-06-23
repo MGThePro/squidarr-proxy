@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/cavaliergopher/grab/v3"
 	"github.com/tidwall/gjson"
+	"go.senan.xyz/taglib"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -18,6 +19,7 @@ import (
 type File struct {
 	Id           int
 	Name         string
+	Index        string
 	DownloadLink string
 	completed    bool
 }
@@ -25,6 +27,7 @@ type File struct {
 type Download struct {
 	Id         string
 	Artist     string
+	Album      string
 	numTracks  int
 	downloaded int
 	FileName   string
@@ -137,11 +140,14 @@ func generateDownload(filename string, Id string, numTracks int) {
 		return
 	}
 	download.Artist = gjson.Get(string(bodyBytes), "data.artist.name").String()
+	download.Album = gjson.Get(string(bodyBytes), "data.title").String()
 	result := gjson.Get(string(bodyBytes), "data.tracks.items")
 	result.ForEach(func(key, value gjson.Result) bool {
 		var track File
-		track.Id = int(gjson.Get(value.String(), "id").Int())
-		track.Name = gjson.Get(value.String(), "title").String()
+		var valueString = value.String()
+		track.Id = int(gjson.Get(valueString, "id").Int())
+		track.Name = gjson.Get(valueString, "title").String()
+		track.Index = gjson.Get(valueString, "track_number").String()
 		track.completed = false
 		var queryUrl string = ApiLink + "/download-music?track_id=" + strconv.Itoa(track.Id) + "&quality=27"
 		resp, err := http.Get(queryUrl)
@@ -273,7 +279,15 @@ func startDownload(download *Download) {
 			track.completed = true
 			download.downloaded += 1
 		}
+		//inject metadata into track
+		err = taglib.WriteTags(DownloadIncompletePath+"/"+Category+"/"+download.FileName+"/"+download.Artist+" - "+track.Name+".flac", map[string][]string{
+			// Multi-valued tags allowed
+			taglib.AlbumArtist: {download.Artist},
+			taglib.Album:       {download.Album},
+			taglib.TrackNumber: {track.Index},
+		}, 0)
 	}
+
 	//Download (should be) complete, move to complete folder
 	err = RenameDir(DownloadIncompletePath+"/"+Category+"/"+download.FileName, DownloadCompletePath+"/"+Category+"/"+download.FileName, false)
 	if err != nil {
