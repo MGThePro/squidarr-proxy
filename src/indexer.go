@@ -15,6 +15,7 @@ import (
 type Album struct {
 	Artist       string
 	Title        string
+	Edition      string
 	ReleaseDate  int64
 	Publisher    string
 	CoverUrl     string
@@ -163,6 +164,7 @@ func search(w http.ResponseWriter, u url.URL) {
 			var resultString string = value.String()
 			album.Artist = gjson.Get(resultString, "artist.name").String()
 			album.Title = gjson.Get(resultString, "title").String()
+			album.Edition = gjson.Get(resultString, "version").String()
 			album.ReleaseDate = gjson.Get(resultString, "released_at").Int()
 			album.Publisher = gjson.Get(resultString, "label.name").String()
 			album.CoverUrl = gjson.Get(resultString, "image.small").String()
@@ -223,7 +225,7 @@ func search(w http.ResponseWriter, u url.URL) {
 
 func releaseName(album Album) (name string) {
 	release := time.Unix(album.ReleaseDate, 0)
-	name = album.Artist + "-" + album.Title + "-" + strconv.FormatInt(album.BitDepth, 10) + "BIT-" + strconv.FormatInt(album.SamplingRate, 10) + "-KHZ-WEB-FLAC-" + strconv.Itoa(release.Year()) + "-SQUIDWTF"
+	name = album.Artist + "-" + album.Title + " (" + album.Edition + ")" + "-" + strconv.FormatInt(album.BitDepth, 10) + "BIT-" + strconv.FormatInt(album.SamplingRate, 10) + "-KHZ-WEB-FLAC-" + strconv.Itoa(release.Year()) + "-SQUIDWTF"
 	return name
 }
 

@@ -273,5 +273,9 @@ func startDownload(download *Download) {
 		}
 	}
 	//Download (should be) complete, move to complete folder
-	os.Rename(DownloadIncompletePath+"/"+Category+"/"+download.FileName, DownloadCompletePath+"/"+Category+"/"+download.FileName)
+	err = os.Rename(DownloadIncompletePath+"/"+Category+"/"+download.FileName, DownloadCompletePath+"/"+Category+"/"+download.FileName)
+	if err != nil {
+		fmt.Println("Couldn't move folder to destination")
+		fmt.Println(err)
+	}
 }
