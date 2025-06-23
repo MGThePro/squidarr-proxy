@@ -211,6 +211,11 @@ func queue(w http.ResponseWriter, r *http.Request) {
 }
 
 func history(w http.ResponseWriter, r *http.Request) {
+	//check for deletion call first
+	if r.URL.Query().Get("delete") != "" {
+		var id, _ string = CutPrefix(r.URL.Query().Get("delete"), "SABnzbd_nzo_")
+		delete(downloads, id)
+	}
 	var response string = `{
 	    "history": {
 	        "slots": [`
