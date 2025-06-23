@@ -222,12 +222,19 @@ func history(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		// Get the fileinfo
-		fileInfo, _ := os.Stat(DownloadCompletePath + "/" + Category + "/" + download.FileName)
+		fileInfo, err := os.Stat(DownloadCompletePath + "/" + Category + "/" + download.FileName)
+		var fileSize int64
+		if err != nil {
+			//cant get file stats on Docker for some reason? giving arbitrary size info
+			fileSize = 10000
+		} else {
+			fileSize = fileInfo.Size()
+		}
 		response += "\n{\n" +
 			"\"name\": \"" + download.FileName + "\", \n" +
 			"\"nzb_name\": \"" + download.FileName + ".nzb\",\n" +
 			"\"category\": \"" + Category + "\",\n" +
-			"\"bytes\": " + strconv.FormatInt(fileInfo.Size(), 10) + ",\n" +
+			"\"bytes\": " + strconv.FormatInt(fileSize, 10) + ",\n" +
 			//same estimate of 10 seconds per track, could measure time in the future
 			"\"download_time\": " + strconv.Itoa(download.numTracks*30) + ",\n" +
 			"\"status\": \"Completed\",\n" +

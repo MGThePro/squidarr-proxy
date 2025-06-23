@@ -1,0 +1,17 @@
+services:
+  squidarr-proxy:
+    image: squidarr-proxy:latest
+    container_name: squidarr-proxy
+    environment:
+      - TZ=Europe/Berlin
+      - DOWNLOAD_COMPLETE_PATH=/data/media
+      - DOWNLOAD_INCOMPLETE_PATH=/data/downloads
+      - CATEGORY=music
+      - REGION=eu
+      - PORT=8687
+    volumes:
+      - ./incomplete/downloads/here:/data/downloads
+      - ./complete/downloads/here:/data/media
+    ports:
+      - "8687:8687"
+    restart: unless-stopped
