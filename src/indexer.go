@@ -225,7 +225,7 @@ func search(w http.ResponseWriter, u url.URL) {
 
 func releaseName(album Album) (name string) {
 	release := time.Unix(album.ReleaseDate, 0)
-	name = album.Artist + "-" + album.Title + " (" + album.Edition + ")" + "-" + strconv.FormatInt(album.BitDepth, 10) + "BIT-" + strconv.FormatInt(album.SamplingRate, 10) + "-KHZ-WEB-FLAC-" + strconv.Itoa(release.Year()) + "-SQUIDWTF"
+	name = album.Artist + "-" + album.Title + "-" + strconv.FormatInt(album.BitDepth, 10) + "BIT-" + strconv.FormatInt(album.SamplingRate, 10) + "-KHZ-WEB-FLAC-" + strconv.Itoa(release.Year()) + "-SQUIDWTF"
 	return name
 }
 
