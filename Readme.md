@@ -21,9 +21,8 @@ For the downloader, add a new SABnzbd downloader and configure the following:
 Ideally set the API Key here that you set in your docker compose so your container doesn't stop working when I finally get to setting this up. Same goes for the Newznab indexer
 
 ## TODO/Things that are broken
-1. Users/Permissions are still weird. Probably a docker thing, not sure
-2. Barely any metadata gets applied to the files. Pretty much just the Album name, Title, Artist and Track number. The data is available in the API with no extra requests, just need to wire it up
-3. Deleting things from the History/Queue doesn't seem to quite work every time.
-4. Starting a download causes it to download the file immediately, without reporting back to Lidarr. Because of this the download progress can't be tracked on Lidarr (though this worked previously)
-5. Sometimes automatic importing doesn't work because Lidarr can't do the 80% match thing. Not sure what that even means.
-6. Sub-optimal error handling
+1. Barely any metadata gets applied to the files. Pretty much just the Album name, Title, Artist and Track number. The data is available in the API with no extra requests, just need to wire it up
+2. Deleting things from the History/Queue doesn't seem to quite work every time.
+3. Starting a download causes it to download the file immediately, without reporting back to Lidarr. Because of this the download progress can't be tracked on Lidarr (though this worked previously)
+4. Sometimes automatic importing doesn't work because Lidarr can't do the 80% match thing. Not sure what that even means.
+5. Sub-optimal error handling

@@ -8,6 +8,7 @@ services:
       - CATEGORY=music
       - REGION=eu
       - PORT=8687
+    user: "1000:1000"
     volumes:
       - ./downloads/folder/here:/data/squidarr
     ports:
