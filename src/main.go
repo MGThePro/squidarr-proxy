@@ -6,8 +6,7 @@ import (
 	"os"
 )
 
-var DownloadCompletePath string
-var DownloadIncompletePath string
+var DownloadPath string
 var Category string
 var Port string
 var Region string
@@ -23,8 +22,7 @@ func getEnv(key string, fallback string) string {
 }
 
 func main() {
-	DownloadCompletePath = getEnv("DOWNLOAD_COMPLETE_PATH", "/data/media/")
-	DownloadIncompletePath = getEnv("DOWNLOAD_INCOMPLETE_PATH", "/data/downloads")
+	DownloadPath = getEnv("DOWNLOAD_PATH", "/data/squidarr/")
 	Category = getEnv("CATEGORY", "music")
 	Region = getEnv("REGION", "eu")
 	Port = getEnv("PORT", "8687")

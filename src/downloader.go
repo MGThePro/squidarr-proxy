@@ -3,15 +3,12 @@ package main
 import (
 	"fmt"
 	"github.com/cavaliergopher/grab/v3"
-	"github.com/go-flac/flacvorbis/v2"
-	"github.com/go-flac/go-flac/v2"
 	"github.com/tidwall/gjson"
+	"go.senan.xyz/taglib"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -70,7 +67,7 @@ func get_config(w http.ResponseWriter, u url.URL) {
 	w.Write([]byte(`{
 	    "config": {
 	        "misc": {
-	            "complete_dir": "` + DownloadCompletePath + `",
+	            "complete_dir": "` + DownloadPath + `/complete",
 	            "enable_tv_sorting": false,
 	            "enable_movie_sorting": false,
 	            "pre_check": false,
@@ -82,7 +79,7 @@ func get_config(w http.ResponseWriter, u url.URL) {
 	                "name": "music",
 	                "pp": "",
 	                "script": "Default",
-	                "dir": "` + DownloadIncompletePath + `/music",
+	                "dir": "` + DownloadPath + `/incomplete/music",
 	                "priority": -100
 	            },
 	        ],
@@ -225,7 +222,7 @@ func history(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Get("name") != "delete" {
 		var id, _ = strings.CutPrefix(r.URL.Query().Get("value"), "SABnzbd_nzo_")
 		if r.URL.Query().Get("del_files") == "1" {
-			err := os.RemoveAll(DownloadCompletePath + "/" + Category + Downloads[id].FileName)
+			err := os.RemoveAll(DownloadPath + "/complete/" + Category + Downloads[id].FileName)
 			if err != nil {
 				fmt.Println("Couldn't delete folder " + Downloads[id].FileName)
 				fmt.Println(err)
@@ -244,7 +241,7 @@ func history(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		// Get the fileinfo
-		fileInfo, err := os.Stat(DownloadCompletePath + "/" + Category + "/" + download.FileName)
+		fileInfo, err := os.Stat(DownloadPath + "/complete/" + Category + "/" + download.FileName)
 		var fileSize int64
 		if err != nil {
 			//cant get file stats on Docker for some reason? giving arbitrary size info
@@ -260,7 +257,7 @@ func history(w http.ResponseWriter, r *http.Request) {
 			//same estimate of 10 seconds per track, could measure time in the future
 			"\"download_time\": " + strconv.Itoa(download.numTracks*30) + ",\n" +
 			"\"status\": \"Completed\",\n" +
-			"\"storage\": \"" + DownloadCompletePath + "/" + Category + "/" + download.FileName + "\",\n" +
+			"\"storage\": \"" + DownloadPath + "/complete/" + Category + "/" + download.FileName + "\",\n" +
 			"\"nzo_id\": \"SABnzbd_nzo_" + download.Id + "\"\n" +
 			"},"
 	}
@@ -273,15 +270,15 @@ func history(w http.ResponseWriter, r *http.Request) {
 func startDownload(Id string) {
 	download := Downloads[Id]
 	//create folder
-	err := os.Mkdir(DownloadIncompletePath+"/"+Category+"/"+download.FileName, 0755)
+	err := os.Mkdir(DownloadPath+"/incomplete/"+Category+"/"+download.FileName, 0755)
 	if err != nil {
-		fmt.Println("Couldn't create folder in " + DownloadIncompletePath + "/" + Category)
+		fmt.Println("Couldn't create folder in " + DownloadPath + "/incomplete/" + Category)
 		fmt.Println(err)
 		return
 	}
 	//Download each track
 	for _, track := range download.Files {
-		var Path string = DownloadIncompletePath + "/" + Category + "/" + download.FileName + "/" + download.Artist + " - " + track.Name + ".flac"
+		var Path string = DownloadPath + "/incomplete/" + Category + "/" + download.FileName + "/" + download.Artist + " - " + track.Name + ".flac"
 		_, err := grab.Get(Path, track.DownloadLink)
 		if err != nil {
 			fmt.Println("Failed to download track " + track.Name)
@@ -294,168 +291,22 @@ func startDownload(Id string) {
 	}
 	writeMetaData(Id)
 	//Download (should be) complete, move to complete folder
-	defer RenameDir(DownloadIncompletePath+"/"+Category+"/"+download.FileName, DownloadCompletePath+"/"+Category+"/"+download.FileName, false)
+	os.Rename(DownloadPath+"/incomplete/"+Category+"/"+download.FileName, DownloadPath+"/complete/"+Category+"/"+download.FileName)
 }
 
 func writeMetaData(Id string) {
 	album := Downloads[Id]
 	for _, track := range album.Files {
-		var fileName string = DownloadIncompletePath + "/" + Category + "/" + album.FileName + "/" + album.Artist + " - " + track.Name + ".flac"
-		f, err := flac.ParseFile(fileName)
+		var fileName string = DownloadPath + "/incomplete/" + Category + "/" + album.FileName + "/" + album.Artist + " - " + track.Name + ".flac"
+		err := taglib.WriteTags(fileName, map[string][]string{
+			taglib.AlbumArtist: {album.Artist},
+			taglib.Album:       {album.Album},
+			taglib.TrackNumber: {track.Index},
+			taglib.Title:       {track.Name},
+		}, 0)
 		if err != nil {
-			panic(err)
-		}
-		cmts, idx := extractFLACComment(fileName)
-		if cmts == nil {
-			cmts = flacvorbis.New()
-		}
-		cmts.Add(flacvorbis.FIELD_TITLE, track.Name)
-		cmts.Add(flacvorbis.FIELD_ALBUM, album.Album)
-		cmts.Add(flacvorbis.FIELD_TRACKNUMBER, track.Index)
-		cmts.Add(flacvorbis.FIELD_ARTIST, album.Artist)
-		cmtsmeta := cmts.Marshal()
-		if idx > 0 {
-			f.Meta[idx] = &cmtsmeta
-		} else {
-			f.Meta = append(f.Meta, &cmtsmeta)
-		}
-		f.Save(fileName)
-		if err != nil {
-			fmt.Println("Failed to write Metadata on track" + track.Name)
+			fmt.Println("Couldn't write Metadata to file " + fileName)
 			fmt.Println(err)
-			return
 		}
 	}
-}
-
-func extractFLACComment(fileName string) (*flacvorbis.MetaDataBlockVorbisComment, int) {
-	f, err := flac.ParseFile(fileName)
-	if err != nil {
-		panic(err)
-	}
-
-	var cmt *flacvorbis.MetaDataBlockVorbisComment
-	var cmtIdx int
-	for idx, meta := range f.Meta {
-		if meta.Type == flac.VorbisComment {
-			cmt, err = flacvorbis.ParseFromMetaDataBlock(*meta)
-			cmtIdx = idx
-			if err != nil {
-				panic(err)
-			}
-		}
-	}
-	return cmt, cmtIdx
-}
-
-func RenameDir(src string, dst string, force bool) (err error) {
-	err = CopyDir(src, dst, force)
-	if err != nil {
-		return fmt.Errorf("failed to copy source dir %s to %s: %s", src, dst, err)
-	}
-	err = os.RemoveAll(src)
-	if err != nil {
-		return fmt.Errorf("failed to cleanup source dir %s: %s", src, err)
-	}
-	return nil
-}
-
-// credit https://gist.github.com/r0l1/92462b38df26839a3ca324697c8cba04
-func CopyDir(src string, dst string, force bool) (err error) {
-	src = filepath.Clean(src)
-	dst = filepath.Clean(dst)
-
-	si, err := os.Stat(src)
-	if err != nil {
-		return err
-	}
-	if !si.IsDir() {
-		return fmt.Errorf("source is not a directory")
-	}
-
-	_, err = os.Stat(dst)
-	if err != nil && !os.IsNotExist(err) {
-		return
-	}
-	if err == nil {
-		if force {
-			os.RemoveAll(dst)
-		} else {
-			return fmt.Errorf("destination already exists")
-		}
-	}
-
-	err = os.MkdirAll(dst, si.Mode())
-	if err != nil {
-		return
-	}
-
-	entries, err := ioutil.ReadDir(src)
-	if err != nil {
-		return
-	}
-
-	for _, entry := range entries {
-		srcPath := filepath.Join(src, entry.Name())
-		dstPath := filepath.Join(dst, entry.Name())
-
-		if entry.IsDir() {
-			err = CopyDir(srcPath, dstPath, force)
-			if err != nil {
-				return
-			}
-		} else {
-			// Skip symlinks.
-			if entry.Mode()&os.ModeSymlink != 0 {
-				continue
-			}
-
-			err = CopyFile(srcPath, dstPath)
-			if err != nil {
-				return
-			}
-		}
-	}
-
-	return
-}
-
-// credit https://gist.github.com/r0l1/92462b38df26839a3ca324697c8cba04
-func CopyFile(src, dst string) (err error) {
-	in, err := os.Open(src)
-	if err != nil {
-		return
-	}
-	defer in.Close()
-
-	out, err := os.Create(dst)
-	if err != nil {
-		return
-	}
-	defer func() {
-		if e := out.Close(); e != nil {
-			err = e
-		}
-	}()
-
-	_, err = io.Copy(out, in)
-	if err != nil {
-		return
-	}
-
-	err = out.Sync()
-	if err != nil {
-		return
-	}
-
-	si, err := os.Stat(src)
-	if err != nil {
-		return
-	}
-	err = os.Chmod(dst, si.Mode())
-	if err != nil {
-		return
-	}
-
-	return
 }
