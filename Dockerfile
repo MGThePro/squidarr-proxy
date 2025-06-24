@@ -7,8 +7,6 @@ RUN go mod download
 
 RUN go build
 
-
-RUN mkdir /data
-RUN mkdir /data/squidarr
+RUN mkdir -p /data/squidarr
 
 ENTRYPOINT ["./squidarr-proxy"]
