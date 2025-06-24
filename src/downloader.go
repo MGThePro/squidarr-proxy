@@ -3,8 +3,9 @@ package main
 import (
 	"fmt"
 	"github.com/cavaliergopher/grab/v3"
+	"github.com/go-flac/flacvorbis/v2"
+	"github.com/go-flac/go-flac/v2"
 	"github.com/tidwall/gjson"
-	"go.senan.xyz/taglib"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -290,26 +291,61 @@ func startDownload(Id string) {
 			track.completed = true
 			download.downloaded += 1
 		}
-		//inject metadata into track
-		err = taglib.WriteTags(Path, map[string][]string{
-			taglib.AlbumArtist: {download.Artist},
-			taglib.Album:       {download.Album},
-			taglib.TrackNumber: {track.Index},
-			taglib.Title:       {track.Name},
-		}, 0)
+	}
+	writeMetaData(Id)
+	//Download (should be) complete, move to complete folder
+	defer RenameDir(DownloadIncompletePath+"/"+Category+"/"+download.FileName, DownloadCompletePath+"/"+Category+"/"+download.FileName, false)
+}
+
+func writeMetaData(Id string) {
+	album := Downloads[Id]
+	for _, track := range album.Files {
+		var fileName string = DownloadIncompletePath + "/" + Category + "/" + album.FileName + "/" + album.Artist + " - " + track.Name + ".flac"
+		f, err := flac.ParseFile(fileName)
+		if err != nil {
+			panic(err)
+		}
+		cmts, idx := extractFLACComment(fileName)
+		if cmts == nil {
+			cmts = flacvorbis.New()
+		}
+		cmts.Add(flacvorbis.FIELD_TITLE, track.Name)
+		cmts.Add(flacvorbis.FIELD_ALBUM, album.Album)
+		cmts.Add(flacvorbis.FIELD_TRACKNUMBER, track.Index)
+		cmts.Add(flacvorbis.FIELD_ARTIST, album.Artist)
+		cmtsmeta := cmts.Marshal()
+		if idx > 0 {
+			f.Meta[idx] = &cmtsmeta
+		} else {
+			f.Meta = append(f.Meta, &cmtsmeta)
+		}
+		f.Save(fileName)
 		if err != nil {
 			fmt.Println("Failed to write Metadata on track" + track.Name)
 			fmt.Println(err)
 			return
 		}
 	}
+}
 
-	//Download (should be) complete, move to complete folder
-	err = RenameDir(DownloadIncompletePath+"/"+Category+"/"+download.FileName, DownloadCompletePath+"/"+Category+"/"+download.FileName, false)
+func extractFLACComment(fileName string) (*flacvorbis.MetaDataBlockVorbisComment, int) {
+	f, err := flac.ParseFile(fileName)
 	if err != nil {
-		fmt.Println("Couldn't move folder to destination")
-		fmt.Println(err)
+		panic(err)
 	}
+
+	var cmt *flacvorbis.MetaDataBlockVorbisComment
+	var cmtIdx int
+	for idx, meta := range f.Meta {
+		if meta.Type == flac.VorbisComment {
+			cmt, err = flacvorbis.ParseFromMetaDataBlock(*meta)
+			cmtIdx = idx
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+	return cmt, cmtIdx
 }
 
 func RenameDir(src string, dst string, force bool) (err error) {
