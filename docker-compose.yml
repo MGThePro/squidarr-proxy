@@ -4,14 +4,12 @@ services:
     container_name: squidarr-proxy
     environment:
       - TZ=Europe/Berlin
-      - DOWNLOAD_COMPLETE_PATH=/data/media
-      - DOWNLOAD_INCOMPLETE_PATH=/data/downloads
+      - DOWNLOAD_PATH=/data/squidarr
       - CATEGORY=music
       - REGION=eu
       - PORT=8687
     volumes:
-      - ./incomplete/downloads/here:/data/downloads
-      - ./complete/downloads/here:/data/media
+      - ./downloads/folder/here:/data/squidarr
     ports:
       - "8687:8687"
     restart: unless-stopped
