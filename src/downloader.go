@@ -166,7 +166,7 @@ func generateDownload(filename string, Id string, numTracks int) {
 		return true
 	})
 	Downloads[Id] = &download
-	go startDownload(&download)
+	startDownload(Id)
 }
 
 func queue(w http.ResponseWriter, r *http.Request) {
@@ -220,8 +220,16 @@ func queue(w http.ResponseWriter, r *http.Request) {
 
 func history(w http.ResponseWriter, r *http.Request) {
 	//check for deletion call first
-	if r.URL.Query().Get("delete") != "" {
-		var id, _ = strings.CutPrefix(r.URL.Query().Get("delete"), "SABnzbd_nzo_")
+	//api?mode=history&name=delete&del_files=1&value=SABnzbd_nzo_0825646642830&archive=1&apikey=(removed)&output=json
+	if r.URL.Query().Get("name") != "delete" {
+		var id, _ = strings.CutPrefix(r.URL.Query().Get("value"), "SABnzbd_nzo_")
+		if r.URL.Query().Get("del_files") == "1" {
+			err := os.RemoveAll(DownloadCompletePath + "/" + Category + Downloads[id].FileName)
+			if err != nil {
+				fmt.Println("Couldn't delete folder " + Downloads[id].FileName)
+				fmt.Println(err)
+			}
+		}
 		delete(Downloads, id)
 	}
 	var response string = `{
@@ -261,12 +269,14 @@ func history(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(response))
 }
 
-func startDownload(download *Download) {
+func startDownload(Id string) {
+	download := Downloads[Id]
 	//create folder
 	err := os.Mkdir(DownloadIncompletePath+"/"+Category+"/"+download.FileName, 0755)
 	if err != nil {
 		fmt.Println("Couldn't create folder in " + DownloadIncompletePath + "/" + Category)
 		fmt.Println(err)
+		return
 	}
 	//Download each track
 	for _, track := range download.Files {
@@ -275,17 +285,23 @@ func startDownload(download *Download) {
 		if err != nil {
 			fmt.Println("Failed to download track " + track.Name)
 			fmt.Println(err)
+			return
 		} else {
 			track.completed = true
 			download.downloaded += 1
 		}
 		//inject metadata into track
-		err = taglib.WriteTags(DownloadIncompletePath+"/"+Category+"/"+download.FileName+"/"+download.Artist+" - "+track.Name+".flac", map[string][]string{
-			// Multi-valued tags allowed
+		err = taglib.WriteTags(Path, map[string][]string{
 			taglib.AlbumArtist: {download.Artist},
 			taglib.Album:       {download.Album},
 			taglib.TrackNumber: {track.Index},
+			taglib.Title:       {track.Name},
 		}, 0)
+		if err != nil {
+			fmt.Println("Failed to write Metadata on track" + track.Name)
+			fmt.Println(err)
+			return
+		}
 	}
 
 	//Download (should be) complete, move to complete folder
@@ -304,17 +320,6 @@ func RenameDir(src string, dst string, force bool) (err error) {
 	err = os.RemoveAll(src)
 	if err != nil {
 		return fmt.Errorf("failed to cleanup source dir %s: %s", src, err)
-	}
-	return nil
-}
-func RenameFile(src string, dst string) (err error) {
-	err = CopyFile(src, dst)
-	if err != nil {
-		return fmt.Errorf("failed to copy source file %s to %s: %s", src, dst, err)
-	}
-	err = os.RemoveAll(src)
-	if err != nil {
-		return fmt.Errorf("failed to cleanup source file %s: %s", src, err)
 	}
 	return nil
 }
