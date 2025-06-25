@@ -31,10 +31,10 @@ func main() {
 
 	//create folders if they don't exist yet
 	os.Mkdir(DownloadPath, 0775)
-	os.Mkdir(DownloadPath+"/incomplete", 0775)
-	os.Mkdir(DownloadPath+"/incomplete/"+Category, 0775)
-	os.Mkdir(DownloadPath+"/complete", 0775)
-	os.Mkdir(DownloadPath+"/complete/"+Category, 0775)
+	os.Mkdir(DownloadPath + "/incomplete", 0775)
+	os.Mkdir(DownloadPath + "/incomplete/" + Category, 0775)
+	os.Mkdir(DownloadPath + "/complete", 0775)
+	os.Mkdir(DownloadPath + "/complete/" + Category, 0775)
 
 	http.HandleFunc("/indexer", handleIndexerRequest)
 	http.HandleFunc("/downloader/api", handleDownloaderRequest)

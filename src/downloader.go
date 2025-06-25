@@ -18,6 +18,8 @@ type File struct {
 	Id           int
 	Name         string
 	Index        string
+	mediaNumber  string
+	isrc         string
 	DownloadLink string
 	completed    bool
 }
@@ -26,7 +28,11 @@ type Download struct {
 	Id         string
 	Artist     string
 	Album      string
+	Comment    string
+	CoverUrl   string
 	numTracks  int
+	mediaCount int
+	label      string
 	downloaded int
 	FileName   string
 	Files      []File
@@ -117,6 +123,7 @@ func addfile(w http.ResponseWriter, r *http.Request) {
 		"\"status\": true,\n" +
 		"\"nzo_ids\": [\"SABnzbd_nzo_" + Id + "\"]\n" +
 		"}"))
+	go startDownload(Id)
 }
 
 func generateDownload(filename string, Id string, numTracks int) {
@@ -139,6 +146,14 @@ func generateDownload(filename string, Id string, numTracks int) {
 	}
 	download.Artist = gjson.Get(string(bodyBytes), "data.artist.name").String()
 	download.Album = gjson.Get(string(bodyBytes), "data.title").String()
+	download.Comment = gjson.Get(string(bodyBytes), "data.version").String()
+	download.CoverUrl = gjson.Get(string(bodyBytes), "data.image.large").String()
+	if download.Comment == "null" {
+		download.Comment = ""
+	}
+	download.numTracks = int(gjson.Get(string(bodyBytes), "data.tracks_count").Int())
+	download.mediaCount = int(gjson.Get(string(bodyBytes), "data.media_count").Int())
+	download.label = gjson.Get(string(bodyBytes), "data.copyright").String()
 	result := gjson.Get(string(bodyBytes), "data.tracks.items")
 	result.ForEach(func(key, value gjson.Result) bool {
 		var track File
@@ -146,6 +161,8 @@ func generateDownload(filename string, Id string, numTracks int) {
 		track.Id = int(gjson.Get(valueString, "id").Int())
 		track.Name = gjson.Get(valueString, "title").String()
 		track.Index = gjson.Get(valueString, "track_number").String()
+		track.mediaNumber = gjson.Get(valueString, "media_number").String()
+		track.isrc = gjson.Get(valueString, "isrc").String()
 		track.completed = false
 		var queryUrl string = ApiLink + "/download-music?track_id=" + strconv.Itoa(track.Id) + "&quality=27"
 		resp, err := http.Get(queryUrl)
@@ -164,7 +181,6 @@ func generateDownload(filename string, Id string, numTracks int) {
 		return true
 	})
 	Downloads[Id] = &download
-	startDownload(Id)
 }
 
 func queue(w http.ResponseWriter, r *http.Request) {
@@ -270,16 +286,24 @@ func history(w http.ResponseWriter, r *http.Request) {
 func startDownload(Id string) {
 	download := Downloads[Id]
 	//create folder
-	err := os.Mkdir(DownloadPath+"/incomplete/"+Category+"/"+download.FileName, 0755)
+	var Folder string = DownloadPath + "/incomplete/" + Category + "/" + download.FileName + "/"
+	err := os.Mkdir(Folder, 0755)
 	if err != nil {
 		fmt.Println("Couldn't create folder in " + DownloadPath + "/incomplete/" + Category)
 		fmt.Println(err)
 		return
 	}
+	//Download cover art
+	_, err = grab.Get(Folder+"cover.jpg", download.CoverUrl)
+	if err != nil {
+		fmt.Println("Failed to download cover")
+		fmt.Println(err)
+		return
+	}
 	//Download each track
 	for _, track := range download.Files {
-		var Path string = DownloadPath + "/incomplete/" + Category + "/" + download.FileName + "/" + download.Artist + " - " + track.Name + ".flac"
-		_, err := grab.Get(Path, track.DownloadLink)
+		var Name string = track.Index + " - " + download.Artist + " - " + track.Name + ".flac"
+		_, err := grab.Get(Folder+Name, track.DownloadLink)
 		if err != nil {
 			fmt.Println("Failed to download track " + track.Name)
 			fmt.Println(err)
@@ -287,26 +311,27 @@ func startDownload(Id string) {
 		} else {
 			track.completed = true
 			download.downloaded += 1
+			writeMetaData(*download, track, Folder+Name)
 		}
 	}
-	writeMetaData(Id)
 	//Download (should be) complete, move to complete folder
-	os.Rename(DownloadPath+"/incomplete/"+Category+"/"+download.FileName, DownloadPath+"/complete/"+Category+"/"+download.FileName)
+	os.Rename(Folder, DownloadPath+"/complete/"+Category+"/"+download.FileName)
 }
 
-func writeMetaData(Id string) {
-	album := Downloads[Id]
-	for _, track := range album.Files {
-		var fileName string = DownloadPath + "/incomplete/" + Category + "/" + album.FileName + "/" + album.Artist + " - " + track.Name + ".flac"
-		err := taglib.WriteTags(fileName, map[string][]string{
-			taglib.AlbumArtist: {album.Artist},
-			taglib.Album:       {album.Album},
-			taglib.TrackNumber: {track.Index},
-			taglib.Title:       {track.Name},
-		}, 0)
-		if err != nil {
-			fmt.Println("Couldn't write Metadata to file " + fileName)
-			fmt.Println(err)
-		}
-	}
+func writeMetaData(album Download, track File, fileName string) {
+	err := taglib.WriteTags(fileName, map[string][]string{
+		taglib.AlbumArtist: {album.Artist},
+		taglib.Artist:      {album.Artist},
+		taglib.Album:       {album.Album},
+		taglib.TrackNumber: {track.Index},
+		taglib.Title:       {track.Name},
+		taglib.Comment:     {album.Comment},
+		taglib.DiscNumber:  {track.mediaNumber},
+		taglib.Label:       {album.label},
+		taglib.ISRC:        {track.isrc},
+	}, 0)
+	if err != nil {
+		fmt.Println("Couldn't write Metadata to file " + fileName)
+		fmt.Println(err)
+	}	
 }
