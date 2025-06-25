@@ -1,8 +1,7 @@
 # squidarr-proxy
 
-IMPORTANT: Not finished yet. Basic downloading works but many things are still broken. See the TODO section below
-
 Complete your Lidarr library by downloading from Qobuz via squid.wtf
+Almost ready for use. Try it out, tell me what's wrong. But careful - here be dragons :)
 
 ## setup
 
@@ -21,7 +20,6 @@ For the downloader, add a new SABnzbd downloader and configure the following:
 Ideally set the API Key here that you set in your docker compose so your container doesn't stop working when I finally get to setting this up. Same goes for the Newznab indexer
 
 ## TODO/Things that are broken
-1. Tracking download progress in Lidarr only works sometimes
-2. Some downloads simply wont be recognized by Lidarr, not even for manual importing. Not sure if this is due to Lidarr or due to squidarr-proxy
-3. Sometimes automatic importing doesn't work because Lidarr can't do the 80% match thing.
-4. Sub-optimal error handling
+1. API Tokens aren't implemented yet, making every instance completely open
+2. Sub-optimal error handling. At least delete incomplete downloads on errors and clear the incomplete folder in startup
+3. Once it's ready for prime time - Create the container image via GitHub and make this easy to use
