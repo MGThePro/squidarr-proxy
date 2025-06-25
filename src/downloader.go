@@ -235,10 +235,10 @@ func queue(w http.ResponseWriter, r *http.Request) {
 func history(w http.ResponseWriter, r *http.Request) {
 	//check for deletion call first
 	//api?mode=history&name=delete&del_files=1&value=SABnzbd_nzo_0825646642830&archive=1&apikey=(removed)&output=json
-	if r.URL.Query().Get("name") != "delete" {
+	if r.URL.Query().Get("name") == "delete" {
 		var id, _ = strings.CutPrefix(r.URL.Query().Get("value"), "SABnzbd_nzo_")
 		if r.URL.Query().Get("del_files") == "1" {
-			err := os.RemoveAll(DownloadPath + "/complete/" + Category + Downloads[id].FileName)
+			err := os.RemoveAll(DownloadPath + "/complete/" + Category + "/" + Downloads[id].FileName)
 			if err != nil {
 				fmt.Println("Couldn't delete folder " + Downloads[id].FileName)
 				fmt.Println(err)
@@ -333,5 +333,5 @@ func writeMetaData(album Download, track File, fileName string) {
 	if err != nil {
 		fmt.Println("Couldn't write Metadata to file " + fileName)
 		fmt.Println(err)
-	}	
+	}
 }
