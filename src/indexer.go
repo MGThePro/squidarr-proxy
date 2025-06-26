@@ -29,6 +29,12 @@ type Album struct {
 }
 
 func handleIndexerRequest(w http.ResponseWriter, r *http.Request) {
+	var queryApiKey string = r.URL.Query().Get("apikey")
+	if queryApiKey != ApiKey {
+		w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
+		<error code="100" description="Incorrect user credentials"/>`))
+		return
+	}
 	switch query := r.URL.Query().Get("t"); query {
 	case "caps":
 		caps(w, *r.URL)

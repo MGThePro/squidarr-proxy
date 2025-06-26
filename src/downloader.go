@@ -41,6 +41,11 @@ type Download struct {
 var Downloads map[string]*Download = make(map[string]*Download)
 
 func handleDownloaderRequest(w http.ResponseWriter, r *http.Request) {
+	var queryApiKey string = r.URL.Query().Get("apikey")
+	if ApiKey != queryApiKey {
+		w.Write([]byte("error: API Key Incorrect"))
+		return
+	}
 	switch query := r.URL.Query().Get("mode"); query {
 	case "get_config":
 		get_config(w, *r.URL)
