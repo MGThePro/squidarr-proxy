@@ -213,7 +213,7 @@ func search(w http.ResponseWriter, u url.URL) {
 			"    <pubDate>" + time.Unix(album.ReleaseDate, 0).Format("Mon, 02 Jan 2006 15:04:05 -0700") + "</pubDate>" +
 			"    <category>Audio > Lossless</category>" +
 			"    <description>" + album.Artist + " " + album.Title + "</description>" +
-			"    <enclosure url=\"/indexer?t=fakenzb&amp;qobuzid=" + album.Id + "&amp;numtracks=" + strconv.FormatInt(album.NumTracks, 10) + "\" length=\"" + strconv.FormatInt(album.Size, 10) + "\" type=\"application/x-nzb\" />" +
+			"    <enclosure url=\"/indexer?t=fakenzb&amp;qobuzid=" + album.Id + "&amp;numtracks=" + strconv.FormatInt(album.NumTracks, 10) + "&amp;apikey=" + ApiKey + "\" type=\"application/x-nzb\" />" +
 
 			"    <!-- Additional attributes -->" +
 			"    <newznab:attr name=\"category\" value=\"3000\"/>" +
