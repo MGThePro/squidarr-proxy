@@ -2,8 +2,6 @@
 
 Complete your Lidarr library by downloading from Qobuz via squid.wtf
 
-Almost ready for use. Try it out, tell me what's wrong. But careful - here be dragons :)
-
 ## Setup
 
 Build the Docker image via the included Dockerfile, then use the included docker-compose.yml as reference to create your container.
@@ -21,5 +19,5 @@ For the downloader, add a new SABnzbd downloader and configure the following:
 3. Set the API token you set in your docker-compose.yml
 
 ## TODO
-1. Sub-optimal error handling. At least delete incomplete downloads on errors and clear the incomplete folder in startup
+1. Cancelling downloads or downloads failing could still be a little problematic, though neither are very likely (I think?)
 2. Once it's ready for prime time - Create the container image via GitHub and make this easy to use
