@@ -19,5 +19,5 @@ For the downloader, add a new SABnzbd downloader and configure the following:
 3. Set the API token you set in your docker-compose.yml
 
 ## TODO
-1. Cancelling downloads or downloads failing could still be a little problematic, though neither are very likely (I think?)
+1. Cancelling downloads or downloads failing could still be a little problematic, though neither are very likely (I think?). For now, restarting the container if anything happens should be good enough, as it cleans up after itself at startup.
 2. Once it's ready for prime time - Create the container image via GitHub and make this easy to use
