@@ -128,7 +128,9 @@ func addfile(w http.ResponseWriter, r *http.Request) {
 		"\"status\": true,\n" +
 		"\"nzo_ids\": [\"SABnzbd_nzo_" + Id + "\"]\n" +
 		"}"))
-	go startDownload(Id)
+	if Downloads[Id].downloaded != -1 {
+		go startDownload(Id)
+	}
 }
 
 func generateDownload(filename string, Id string, numTracks int) {
@@ -182,6 +184,18 @@ func generateDownload(filename string, Id string, numTracks int) {
 			return false
 		}
 		track.DownloadLink = gjson.Get(string(bodyBytes), "data.url").String()
+		if track.DownloadLink == "" {
+			fmt.Println("squid.wtf didn't give a link for track " + track.Name)
+			fmt.Println("This is most likely an error with squid.wtf, Qobuz-DL or Qobuz itself...")
+			fmt.Println("Cancelling download...")
+			download.downloaded = -1
+			err := os.RemoveAll(DownloadPath + "/incomplete/" + Category + "/" + download.FileName)
+			if err != nil {
+				fmt.Println("Couldn't delete folder " + download.FileName)
+				fmt.Println(err)
+			}
+			return false
+		}
 		download.Files = append(download.Files, track)
 		return true
 	})
@@ -257,7 +271,7 @@ func history(w http.ResponseWriter, r *http.Request) {
 	//fill this with completed history
 	for id := range Downloads {
 		var download Download = *Downloads[id]
-		if download.downloaded < download.numTracks {
+		if download.downloaded < download.numTracks && download.downloaded != -1 {
 			//not finished yet, skipping...
 			break
 		}
@@ -270,6 +284,12 @@ func history(w http.ResponseWriter, r *http.Request) {
 		} else {
 			fileSize = fileInfo.Size()
 		}
+		var status string
+		if download.downloaded == -1 {
+			status = "Failed"
+		} else {
+			status = "Completed"
+		}
 		response += "\n{\n" +
 			"\"name\": \"" + download.FileName + "\", \n" +
 			"\"nzb_name\": \"" + download.FileName + ".nzb\",\n" +
@@ -277,7 +297,7 @@ func history(w http.ResponseWriter, r *http.Request) {
 			"\"bytes\": " + strconv.FormatInt(fileSize, 10) + ",\n" +
 			//same estimate of 10 seconds per track, could measure time in the future
 			"\"download_time\": " + strconv.Itoa(download.numTracks*30) + ",\n" +
-			"\"status\": \"Completed\",\n" +
+			"\"status\": \"" + status + "\",\n" +
 			"\"storage\": \"" + DownloadPath + "/complete/" + Category + "/" + download.FileName + "\",\n" +
 			"\"nzo_id\": \"SABnzbd_nzo_" + download.Id + "\"\n" +
 			"},"
