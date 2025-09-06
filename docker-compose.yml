@@ -1,6 +1,6 @@
 services:
   squidarr-proxy:
-    image: squidarr-proxy:latest
+    image: ghcr.io/mgthepro/squidarr-proxy:main
     container_name: squidarr-proxy
     environment:
       - TZ=Europe/Berlin
@@ -8,6 +8,8 @@ services:
       - CATEGORY=music
       - REGION=eu
       - PORT=8687
+      # The API Key is the password to your instance, set when configuring indexer and downloader in Lidarr
+      # Set any value you wish here, but do not leave it empty
       - API_KEY=
     user: "1000:1000"
     volumes:
