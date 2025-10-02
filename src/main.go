@@ -28,7 +28,7 @@ func main() {
 	Category = getEnv("CATEGORY", "music")
 	Region = getEnv("REGION", "eu")
 	Port = getEnv("PORT", "8687")
-	ApiLink = "https://" + Region + "qobuz.squid.wtf/api"
+	ApiLink = "https://" + Region + ".qobuz.squid.wtf/api"
 	ApiKey = getEnv("API_KEY", "")
 
 	//create folders if they don't exist yet
