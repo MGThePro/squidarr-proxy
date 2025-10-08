@@ -1,3 +1,11 @@
+# Archival Notice:
+
+The Qobuz part of squid.wtf is currently dead. This software as of right now doesn't really do anything.
+
+A Fork to get this running with Tidal is in the works.
+
+If squid.wtf ever gets Qobuz running again, this will probably be revived.
+
 # squidarr-proxy
 
 Complete your Lidarr library by downloading from Qobuz via squid.wtf
